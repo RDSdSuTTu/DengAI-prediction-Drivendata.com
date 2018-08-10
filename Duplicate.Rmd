@@ -1,0 +1,206 @@
+---
+title: "DengAI: Predicting Disease Spread"
+author: "Rupam Das"
+date: "December 2, 2017"
+output: word_document
+---
+
+Loading the packages into 
+
+```{r}
+library(plyr)
+library(dplyr)
+library(fpp)
+library(caret)
+library(tidyquant)
+library(ggplot2)
+library(imputeTS)
+library(MASS)
+library(forecast)
+library(rsample)
+```
+
+Importing the data into R evnironment
+
+```{r Importing data}
+train <- read.csv("C:/Education/PredictiveAnalysis/DengAI/dengue_train.csv")
+train_results <- read.csv("C:/Education/PredictiveAnalysis/DengAI/dengue_labels_train.csv")
+complete_train <- train %>% mutate(total_cases = train_results[,4])
+test <- read.csv("C:/Education/PredictiveAnalysis/DengAI/dengue_features_test.csv")
+```
+
+Seperate the data by cities
+
+```{r Dividing my data}
+sj_data <- complete_train %>% filter(city == "sj")
+iq_data <- complete_train %>% filter(city == "iq")
+```
+
+Replacing NAs
+
+```{r Mydataset}
+sj_naf_data <- sj_data
+sj_naf_data$ndvi_ne <- na.interpolation(sj_naf_data$ndvi_ne, option="spline")
+sj_naf_data$ndvi_nw <- na.interpolation(sj_naf_data$ndvi_nw, option="spline")
+sj_naf_data$ndvi_se <- na.interpolation(sj_naf_data$ndvi_se, option="spline")
+sj_naf_data$ndvi_sw <- na.interpolation(sj_naf_data$ndvi_sw, option="spline")
+sj_naf_data$precipitation_amt_mm <- na.interpolation(sj_naf_data$precipitation_amt_mm, option="spline")
+sj_naf_data$reanalysis_air_temp_k <- na.interpolation(sj_naf_data$reanalysis_air_temp_k, option="spline")
+sj_naf_data$reanalysis_avg_temp_k <- na.interpolation(sj_naf_data$reanalysis_avg_temp_k, option="spline")
+sj_naf_data$reanalysis_dew_point_temp_k <- na.interpolation(sj_naf_data$reanalysis_dew_point_temp_k, option="spline")
+sj_naf_data$reanalysis_max_air_temp_k <- na.interpolation(sj_naf_data$reanalysis_max_air_temp_k, option="spline")
+sj_naf_data$reanalysis_min_air_temp_k <- na.interpolation(sj_naf_data$reanalysis_min_air_temp_k, option="spline")
+sj_naf_data$reanalysis_precip_amt_kg_per_m2 <- na.interpolation(sj_naf_data$reanalysis_precip_amt_kg_per_m2, option="spline")
+sj_naf_data$reanalysis_relative_humidity_percent <- na.interpolation(sj_naf_data$reanalysis_relative_humidity_percent, option="spline")
+sj_naf_data$reanalysis_sat_precip_amt_mm <- na.interpolation(sj_naf_data$reanalysis_sat_precip_amt_mm, option="spline")
+sj_naf_data$reanalysis_specific_humidity_g_per_kg <- na.interpolation(sj_naf_data$reanalysis_specific_humidity_g_per_kg, option="spline")
+sj_naf_data$station_avg_temp_c <- na.interpolation(sj_naf_data$station_avg_temp_c, option="spline")
+sj_naf_data$station_diur_temp_rng_c <- na.interpolation(sj_naf_data$station_diur_temp_rng_c, option="spline")
+sj_naf_data$station_max_temp_c <- na.interpolation(sj_naf_data$station_max_temp_c, option="spline")
+sj_naf_data$station_min_temp_c <- na.interpolation(sj_naf_data$station_min_temp_c, option="spline")
+sj_naf_data$station_precip_mm <- na.interpolation(sj_naf_data$station_precip_mm, option="spline")
+sj_naf_data$reanalysis_tdtr_k <- na.interpolation(sj_naf_data$reanalysis_tdtr_k, option="spline")
+```
+
+
+```{r Mydataset}
+iq_naf_data <- iq_data
+iq_naf_data$ndvi_ne <- na.interpolation(iq_naf_data$ndvi_ne, option="spline")
+iq_naf_data$ndvi_nw <- na.interpolation(iq_naf_data$ndvi_nw, option="spline")
+iq_naf_data$ndvi_se <- na.interpolation(iq_naf_data$ndvi_se, option="spline")
+iq_naf_data$ndvi_sw <- na.interpolation(iq_naf_data$ndvi_sw, option="spline")
+iq_naf_data$precipitation_amt_mm <- na.interpolation(iq_naf_data$precipitation_amt_mm, option="spline")
+iq_naf_data$reanalysis_air_temp_k <- na.interpolation(iq_naf_data$reanalysis_air_temp_k, option="spline")
+iq_naf_data$reanalysis_avg_temp_k <- na.interpolation(iq_naf_data$reanalysis_avg_temp_k, option="spline")
+iq_naf_data$reanalysis_dew_point_temp_k <- na.interpolation(iq_naf_data$reanalysis_dew_point_temp_k, option="spline")
+iq_naf_data$reanalysis_max_air_temp_k <- na.interpolation(iq_naf_data$reanalysis_max_air_temp_k, option="spline")
+iq_naf_data$reanalysis_min_air_temp_k <- na.interpolation(iq_naf_data$reanalysis_min_air_temp_k, option="spline")
+iq_naf_data$reanalysis_precip_amt_kg_per_m2 <- na.interpolation(iq_naf_data$reanalysis_precip_amt_kg_per_m2, option="spline")
+iq_naf_data$reanalysis_relative_humidity_percent <- na.interpolation(iq_naf_data$reanalysis_relative_humidity_percent, option="spline")
+iq_naf_data$reanalysis_sat_precip_amt_mm <- na.interpolation(iq_naf_data$reanalysis_sat_precip_amt_mm, option="spline")
+iq_naf_data$reanalysis_specific_humidity_g_per_kg <- na.interpolation(iq_naf_data$reanalysis_specific_humidity_g_per_kg, option="spline")
+iq_naf_data$station_avg_temp_c <- na.interpolation(iq_naf_data$station_avg_temp_c, option="spline")
+iq_naf_data$station_diur_temp_rng_c <- na.interpolation(iq_naf_data$station_diur_temp_rng_c, option="spline")
+iq_naf_data$station_max_temp_c <- na.interpolation(iq_naf_data$station_max_temp_c, option="spline")
+iq_naf_data$station_min_temp_c <- na.interpolation(iq_naf_data$station_min_temp_c, option="spline")
+iq_naf_data$station_precip_mm <- na.interpolation(iq_naf_data$station_precip_mm, option="spline")
+iq_naf_data$reanalysis_tdtr_k <- na.interpolation(iq_naf_data$reanalysis_tdtr_k, option="spline")
+```
+
+
+```{r removing-columns}
+sj_naf_data <- sj_naf_data[,-c(1,4)]
+iq_naf_data <- iq_naf_data[,-c(1,4)]
+```
+
+# SJ DATA
+
+```{r removing-coulmns-correlated}
+sj_naf_data <- sj_naf_data[,-c(8:12)]
+sj_naf_data <- sj_naf_data[,-c(13)]
+iq_naf_data <- iq_naf_data[,-c(8:12)]
+iq_naf_data <- iq_naf_data[,-c(13)]
+```
+
+dividing original test data for different cities
+```{r test-data}
+sj_test_data <- test %>% filter(city == "sj")
+iq_test_data <- test %>% filter(city == "iq")
+sj_test_data <- sj_test_data[,-c(1,4)]
+sj_test_data <- sj_test_data[,-c(8:12)]
+sj_test_data <- sj_test_data[,-c(13)]
+iq_test_data <- iq_test_data[,-c(1,4)]
+iq_test_data <- iq_test_data[,-c(8:12)]
+iq_test_data <- iq_test_data[,-c(13)]
+```
+
+Replacing NAs
+
+```{r Mydataset}
+sj_test_naf_data <- sj_test_data
+sj_test_naf_data$ndvi_ne <- na.interpolation(sj_test_naf_data$ndvi_ne, option="spline")
+sj_test_naf_data$ndvi_nw <- na.interpolation(sj_test_naf_data$ndvi_nw, option="spline")
+sj_test_naf_data$ndvi_se <- na.interpolation(sj_test_naf_data$ndvi_se, option="spline")
+sj_test_naf_data$ndvi_sw <- na.interpolation(sj_test_naf_data$ndvi_sw, option="spline")
+sj_test_naf_data$precipitation_amt_mm <- na.interpolation(sj_test_naf_data$precipitation_amt_mm, option="spline")
+sj_test_naf_data$reanalysis_air_temp_k <- na.interpolation(sj_test_naf_data$reanalysis_air_temp_k, option="spline")
+sj_test_naf_data$reanalysis_avg_temp_k <- na.interpolation(sj_test_naf_data$reanalysis_avg_temp_k, option="spline")
+sj_test_naf_data$reanalysis_dew_point_temp_k <- na.interpolation(sj_test_naf_data$reanalysis_dew_point_temp_k, option="spline")
+sj_test_naf_data$reanalysis_max_air_temp_k <- na.interpolation(sj_test_naf_data$reanalysis_max_air_temp_k, option="spline")
+sj_test_naf_data$reanalysis_min_air_temp_k <- na.interpolation(sj_test_naf_data$reanalysis_min_air_temp_k, option="spline")
+sj_test_naf_data$reanalysis_precip_amt_kg_per_m2 <- na.interpolation(sj_test_naf_data$reanalysis_precip_amt_kg_per_m2, option="spline")
+sj_test_naf_data$reanalysis_relative_humidity_percent <- na.interpolation(sj_test_naf_data$reanalysis_relative_humidity_percent, option="spline")
+sj_test_naf_data$reanalysis_sat_precip_amt_mm <- na.interpolation(sj_test_naf_data$reanalysis_sat_precip_amt_mm, option="spline")
+sj_test_naf_data$reanalysis_specific_humidity_g_per_kg <- na.interpolation(sj_test_naf_data$reanalysis_specific_humidity_g_per_kg, option="spline")
+sj_test_naf_data$station_avg_temp_c <- na.interpolation(sj_test_naf_data$station_avg_temp_c, option="spline")
+sj_test_naf_data$station_diur_temp_rng_c <- na.interpolation(sj_test_naf_data$station_diur_temp_rng_c, option="spline")
+sj_test_naf_data$station_max_temp_c <- na.interpolation(sj_test_naf_data$station_max_temp_c, option="spline")
+sj_test_naf_data$station_min_temp_c <- na.interpolation(sj_test_naf_data$station_min_temp_c, option="spline")
+sj_test_naf_data$station_precip_mm <- na.interpolation(sj_test_naf_data$station_precip_mm, option="spline")
+sj_test_naf_data$reanalysis_tdtr_k <- na.interpolation(sj_test_naf_data$reanalysis_tdtr_k, option="spline")
+```
+
+
+```{r Mydataset}
+iq_test_naf_data <- iq_test_data
+iq_test_naf_data$ndvi_ne <- na.interpolation(iq_test_naf_data$ndvi_ne, option="spline")
+iq_test_naf_data$ndvi_nw <- na.interpolation(iq_test_naf_data$ndvi_nw, option="spline")
+iq_test_naf_data$ndvi_se <- na.interpolation(iq_test_naf_data$ndvi_se, option="spline")
+iq_test_naf_data$ndvi_sw <- na.interpolation(iq_test_naf_data$ndvi_sw, option="spline")
+iq_test_naf_data$precipitation_amt_mm <- na.interpolation(iq_test_naf_data$precipitation_amt_mm, option="spline")
+iq_test_naf_data$reanalysis_air_temp_k <- na.interpolation(iq_test_naf_data$reanalysis_air_temp_k, option="spline")
+iq_test_naf_data$reanalysis_avg_temp_k <- na.interpolation(iq_test_naf_data$reanalysis_avg_temp_k, option="spline")
+iq_test_naf_data$reanalysis_dew_point_temp_k <- na.interpolation(iq_test_naf_data$reanalysis_dew_point_temp_k, option="spline")
+iq_test_naf_data$reanalysis_max_air_temp_k <- na.interpolation(iq_test_naf_data$reanalysis_max_air_temp_k, option="spline")
+iq_test_naf_data$reanalysis_min_air_temp_k <- na.interpolation(iq_test_naf_data$reanalysis_min_air_temp_k, option="spline")
+iq_test_naf_data$reanalysis_precip_amt_kg_per_m2 <- na.interpolation(iq_test_naf_data$reanalysis_precip_amt_kg_per_m2, option="spline")
+iq_test_naf_data$reanalysis_relative_humidity_percent <- na.interpolation(iq_test_naf_data$reanalysis_relative_humidity_percent, option="spline")
+iq_test_naf_data$reanalysis_sat_precip_amt_mm <- na.interpolation(iq_test_naf_data$reanalysis_sat_precip_amt_mm, option="spline")
+iq_test_naf_data$reanalysis_specific_humidity_g_per_kg <- na.interpolation(iq_test_naf_data$reanalysis_specific_humidity_g_per_kg, option="spline")
+iq_test_naf_data$station_avg_temp_c <- na.interpolation(iq_test_naf_data$station_avg_temp_c, option="spline")
+iq_test_naf_data$station_diur_temp_rng_c <- na.interpolation(iq_test_naf_data$station_diur_temp_rng_c, option="spline")
+iq_test_naf_data$station_max_temp_c <- na.interpolation(iq_test_naf_data$station_max_temp_c, option="spline")
+iq_test_naf_data$station_min_temp_c <- na.interpolation(iq_test_naf_data$station_min_temp_c, option="spline")
+iq_test_naf_data$station_precip_mm <- na.interpolation(iq_test_naf_data$station_precip_mm, option="spline")
+iq_test_naf_data$reanalysis_tdtr_k <- na.interpolation(iq_test_naf_data$reanalysis_tdtr_k, option="spline")
+```
+
+
+#STEP AIC final submission
+
+
+```{r full-model-1}
+fit_sj <- dynlm(total_cases~0+., data = sj_naf_data)
+autofit_sj <- stepAIC(fit_sj)
+
+x <- predict(fit_sj,sj_test_naf_data)
+write.csv(x,"sj.csv")
+
+fit_iq <- dynlm(total_cases~0+., data=iq_naf_data)
+autofit_iq <- stepAIC(fit_iq)
+
+y <- predict(fit_iq,iq_test_naf_data)
+write.csv(y,"iq.csv")
+
+```
+
+
+#Neural net
+
+```{r full-model-1, echo=False}
+autofit_sj <- avNNet(total_cases~year+weekofyear+ndvi_ne+ndvi_nw+ndvi_se+ndvi_sw+reanalysis_relative_humidity_percent+reanalysis_specific_humidity_g_per_kg+station_diur_temp_rng_c+station_min_temp_c, sj_naf_data, size=3,repeats=5)
+
+x <- predict(autofit_sj,sj_test_naf_data)
+write.csv(x,"sj.csv")
+
+autofit_iq <- avNNet(total_cases~year+weekofyear+ndvi_ne+ndvi_nw+ndvi_se+ndvi_sw+reanalysis_relative_humidity_percent+reanalysis_specific_humidity_g_per_kg+station_diur_temp_rng_c+station_min_temp_c, iq_naf_data,size=3,repeats=5)
+
+y <- predict(autofit_iq,iq_test_naf_data)
+write.csv(y,"iq.csv")
+
+```
+```{r mice }
+y<-arima.sim(model=list(ar=c(.9)),n=10)
+model<-dynlm(y~A+B+C+L(y,1),data=data)
+```
+

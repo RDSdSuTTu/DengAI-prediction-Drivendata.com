@@ -1,0 +1,184 @@
+---
+title: "DengAI: Predicting Disease Spread"
+author: "Rupam Das"
+date: "December 2, 2017"
+output: word_document
+---
+
+Loading the packages into 
+
+```{r}
+library(plyr)
+library(dplyr)
+library(fpp)
+library(caret)
+library(tidyquant)
+library(ggplot2)
+library(imputeTS)
+library(MASS)
+library(forecast)
+library(rsample)
+```
+
+Importing the data into R evnironment
+
+```{r Importing data}
+train <- read.csv("C:/Education/PredictiveAnalysis/DengAI/dengue_train.csv")
+train_results <- read.csv("C:/Education/PredictiveAnalysis/DengAI/dengue_labels_train.csv")
+complete_train <- train %>% mutate(total_cases = train_results[,4])
+test <- read.csv("C:/Education/PredictiveAnalysis/DengAI/dengue_features_test.csv")
+```
+
+Replacing NAs
+
+```{r Mydataset}
+my_data <- complete_train
+my_data$ndvi_ne <- na.interpolation(my_data$ndvi_ne, option="spline")
+my_data$ndvi_nw <- na.interpolation(my_data$ndvi_nw, option="spline")
+my_data$ndvi_se <- na.interpolation(my_data$ndvi_se, option="spline")
+my_data$ndvi_sw <- na.interpolation(my_data$ndvi_sw, option="spline")
+my_data$precipitation_amt_mm <- na.interpolation(my_data$precipitation_amt_mm, option="spline")
+my_data$reanalysis_air_temp_k <- na.interpolation(my_data$reanalysis_air_temp_k, option="spline")
+my_data$reanalysis_avg_temp_k <- na.interpolation(my_data$reanalysis_avg_temp_k, option="spline")
+my_data$reanalysis_dew_point_temp_k <- na.interpolation(my_data$reanalysis_dew_point_temp_k, option="spline")
+my_data$reanalysis_max_air_temp_k <- na.interpolation(my_data$reanalysis_max_air_temp_k, option="spline")
+my_data$reanalysis_min_air_temp_k <- na.interpolation(my_data$reanalysis_min_air_temp_k, option="spline")
+my_data$reanalysis_precip_amt_kg_per_m2 <- na.interpolation(my_data$reanalysis_precip_amt_kg_per_m2, option="spline")
+my_data$reanalysis_relative_humidity_percent <- na.interpolation(my_data$reanalysis_relative_humidity_percent, option="spline")
+my_data$reanalysis_sat_precip_amt_mm <- na.interpolation(my_data$reanalysis_sat_precip_amt_mm, option="spline")
+my_data$reanalysis_specific_humidity_g_per_kg <- na.interpolation(my_data$reanalysis_specific_humidity_g_per_kg, option="spline")
+my_data$station_avg_temp_c <- na.interpolation(my_data$station_avg_temp_c, option="spline")
+my_data$station_diur_temp_rng_c <- na.interpolation(my_data$station_diur_temp_rng_c, option="spline")
+my_data$station_max_temp_c <- na.interpolation(my_data$station_max_temp_c, option="spline")
+my_data$station_min_temp_c <- na.interpolation(my_data$station_min_temp_c, option="spline")
+my_data$station_precip_mm <- na.interpolation(my_data$station_precip_mm, option="spline")
+my_data$reanalysis_tdtr_k <- na.interpolation(my_data$reanalysis_tdtr_k, option="spline")
+
+```
+
+Correlation among columns
+```{r}
+cor(my_data)
+```
+
+
+Seperate the data by cities
+
+```{r Dividing my data}
+sj_data <- my_data %>% filter(city == "sj")
+iq_data <- my_data %>% filter(city == "iq")
+```
+
+```{r removing-columns}
+sj_data <- sj_data[,-c(1,4)]
+iq_data <- iq_data[,-c(1,4)]
+```
+
+# SJ DATA
+
+```{r removing-coulmns-correlated}
+sj_data <- sj_data[,-c(8:12)]
+sj_data <- sj_data[,-c(13)]
+iq_data <- iq_data[,-c(8:12)]
+iq_data <- iq_data[,-c(13)]
+```
+
+Splitting the training data in 80:20
+
+```{r data-split}
+set.seed(100)
+train_test_split <- initial_split(sj_data, prop = 0.8)
+train_sj <- training(train_test_split)
+test_sj  <- testing(train_test_split) 
+
+```
+
+fitting a model for train data
+```{r model-1}
+fit <- lm(total_cases~., train_sj)
+summary(fit)
+plot(fit)
+abline(fit)
+```
+
+predicting the model
+
+```{r predit-model-1}
+x <- predict(fit,test_sj)
+View(x)
+cor(x,test_sj$total_cases)
+```
+
+
+```{r nas}
+
+#test[, 1:ncol(test)][is.na(test[, 1:ncol(test)])] <- 0
+test$ndvi_ne <- na.interpolation(test$ndvi_ne, option="spline")
+test$ndvi_nw <- na.interpolation(test$ndvi_nw, option="spline")
+test$ndvi_se <- na.interpolation(test$ndvi_se, option="spline")
+test$ndvi_sw <- na.interpolation(test$ndvi_sw, option="spline")
+test$precipitation_amt_mm <- na.interpolation(test$precipitation_amt_mm, option="spline")
+test$reanalysis_air_temp_k <- na.interpolation(test$reanalysis_air_temp_k, option="spline")
+test$reanalysis_avg_temp_k <- na.interpolation(test$reanalysis_avg_temp_k, option="spline")
+test$reanalysis_dew_point_temp_k <- na.interpolation(test$reanalysis_dew_point_temp_k, option="spline")
+test$reanalysis_max_air_temp_k <- na.interpolation(test$reanalysis_max_air_temp_k, option="spline")
+test$reanalysis_min_air_temp_k <- na.interpolation(test$reanalysis_min_air_temp_k, option="spline")
+test$reanalysis_precip_amt_kg_per_m2 <- na.interpolation(test$reanalysis_precip_amt_kg_per_m2, option="spline")
+test$reanalysis_relative_humidity_percent <- na.interpolation(test$reanalysis_relative_humidity_percent, option="spline")
+test$reanalysis_sat_precip_amt_mm <- na.interpolation(test$reanalysis_sat_precip_amt_mm, option="spline")
+test$reanalysis_specific_humidity_g_per_kg <- na.interpolation(test$reanalysis_specific_humidity_g_per_kg, option="spline")
+test$station_avg_temp_c <- na.interpolation(test$station_avg_temp_c, option="spline")
+test$station_diur_temp_rng_c <- na.interpolation(test$station_diur_temp_rng_c, option="spline")
+test$station_max_temp_c <- na.interpolation(test$station_max_temp_c, option="spline")
+test$station_min_temp_c <- na.interpolation(test$station_min_temp_c, option="spline")
+test$station_precip_mm <- na.interpolation(test$station_precip_mm, option="spline")
+test$reanalysis_tdtr_k <- na.interpolation(test$reanalysis_tdtr_k, option="spline")
+```
+
+dividing original test data for different cities
+```{r test-data}
+sj_test_data <- test %>% filter(city == "sj")
+iq_test_data <- test %>% filter(city == "iq")
+sj_test_data <- sj_test_data[,-c(1,4)]
+sj_test_data <- sj_test_data[,-c(8:12)]
+sj_test_data <- sj_test_data[,-c(13)]
+iq_test_data <- iq_test_data[,-c(1,4)]
+iq_test_data <- iq_test_data[,-c(8:12)]
+iq_test_data <- iq_test_data[,-c(13)]
+```
+
+replacing NAs in test data with 0
+
+fitting and predicting complete model for entire train data
+
+```{r full-model-1}
+fit_sj <- lm(total_cases~., sj_data)
+summary(fit_sj)
+
+x <- predict(fit_sj,sj_test_data)
+write.csv(x,"sj.csv")
+
+fit_iq <- lm(total_cases~., iq_data)
+summary(fit_iq)
+
+y <- predict(fit_iq,iq_test_data)
+write.csv(y,"iq.csv")
+```
+
+#STEP AIC final submission
+
+
+```{r full-model-1}
+fit_sj <- lm(total_cases~., sj_data)
+autofit_sj <- stepAIC(fit_sj)
+
+x <- predict(autofit_sj,sj_test_data)
+write.csv(x,"sj.csv")
+
+fit_iq <- lm(total_cases~., iq_data)
+autofit_iq <- stepAIC(fit_iq)
+
+y <- predict(autofit_iq,iq_test_data)
+write.csv(y,"iq.csv")
+
+```

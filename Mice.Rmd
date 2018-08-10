@@ -1,0 +1,75 @@
+---
+title: "DengAI: Predicting Disease Spread"
+author: "Rupam Das"
+date: "December 2, 2017"
+output: word_document
+---
+
+Loading the packages into 
+
+```{r}
+library(plyr)
+library(dplyr)
+library(fpp)
+library(caret)
+library(tidyquant)
+library(ggplot2)
+library(imputeTS)
+library(MASS)
+library(forecast)
+library(rsample)
+```
+
+
+```{r Mydataset}
+sj_naf_data <- read.csv("C:/Education/PredictiveAnalysis/dengTrain.SJ.5.csv")
+iq_naf_data <- read.csv("C:/Education/PredictiveAnalysis/dengTrain.IQ5.csv")
+train_results <- read.csv("C:/Education/PredictiveAnalysis/DengAI/dengue_labels_train.csv")
+train_results_sj <- train_results %>% filter(city == "sj")
+train_results_iq <- train_results %>% filter(city == "iq")
+sj_naf_data <- sj_naf_data %>% mutate(total_cases = train_results_sj[,4])
+iq_naf_data <- iq_naf_data %>% mutate(total_cases = train_results_iq[,4])
+```
+
+
+```{r removing-columns}
+sj_naf_data <- sj_naf_data[,-c(1,4)]
+sj_naf_data <- sj_naf_data[,-c(8:12)]
+sj_naf_data <- sj_naf_data[,-c(13)]
+iq_naf_data <- iq_naf_data[,-c(1,4)]
+iq_naf_data <- iq_naf_data[,-c(8:12)]
+iq_naf_data <- iq_naf_data[,-c(13)]
+```
+
+dividing original test data for different cities
+```{r test-data}
+sj_test_data <- read.csv("C:/Education/PredictiveAnalysis/dengTest.SJ5.csv")
+iq_test_data <- read.csv("C:/Education/PredictiveAnalysis/dengTest.IQ5.csv")
+sj_test_data <- sj_test_data[,-c(1,4)]
+sj_test_data <- sj_test_data[,-c(8:12)]
+sj_test_data <- sj_test_data[,-c(13)]
+iq_test_data <- iq_test_data[,-c(1,4)]
+iq_test_data <- iq_test_data[,-c(8:12)]
+iq_test_data <- iq_test_data[,-c(13)]
+```
+
+
+#STEP AIC final submission
+
+
+```{r full-model-1}
+fit_sj <- lm(total_cases~weekofyear+ndvi_ne+ndvi_nw+ndvi_se+ndvi_sw+reanalysis_relative_humidity_percent+reanalysis_specific_humidity_g_per_kg+station_diur_temp_rng_c+station_min_temp_c, data = sj_naf_data)
+autofit_sj <- stepAIC(fit_sj)
+
+x <- round(predict(autofit_sj,sj_test_data),digits=0)
+write.csv(x,"sj.csv")
+
+fit_iq <- lm(total_cases~weekofyear+ndvi_ne+ndvi_nw+ndvi_se+ndvi_sw+reanalysis_relative_humidity_percent+reanalysis_specific_humidity_g_per_kg+station_diur_temp_rng_c+station_min_temp_c, data=iq_naf_data)
+#autofit_iq <- stepAIC(fit_iq)
+
+y <- round(predict(autofit_iq,iq_test_data), digits=0)
+write.csv(y,"iq.csv")
+
+```
+
+
